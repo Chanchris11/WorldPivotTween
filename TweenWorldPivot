@@ -1,0 +1,152 @@
+-- Default values for target model name and tween speed
+local targetModelName = "TargetModel"
+local tweenSpeed = 10 -- Default speed in studs per second
+
+-- Player's PlayerGui
+local player = game.Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- Function to create the GUI elements
+local function createNotificationGui()
+    -- Create a ScreenGui
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "NotificationGui"
+    screenGui.Parent = playerGui
+
+    -- Create the TextLabel
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Name = "NotificationLabel"
+    textLabel.Size = UDim2.new(0, 109, 0, 50)
+    textLabel.Position = UDim2.new(0.824, 0, 0.717, 0)
+    textLabel.BorderSizePixel = 4
+    textLabel.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+    textLabel.FontFace = Font.new("rbxasset://fonts/families/FredokaOne.json")
+    textLabel.Text = "!Perfect Crystal!"
+    textLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
+    textLabel.TextScaled = true
+    textLabel.Visible = false
+    textLabel.Parent = screenGui
+
+    -- Create the TextButton
+    local textButton = Instance.new("TextButton")
+    textButton.Name = "TeleportButton"
+    textButton.Size = UDim2.new(0, 109, 0, 50)
+    textButton.Position = UDim2.new(0.824, 0, 0.851, 0)
+    textButton.BorderSizePixel = 4
+    textButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+    textButton.FontFace = Font.new("rbxasset://fonts/families/FredokaOne.json")
+    textButton.TextColor3 = Color3.fromRGB(0, 0, 0)
+    textButton.Text = "!TELEPORT!"
+    textButton.TextScaled = true
+    textButton.Visible = false
+    textButton.Parent = screenGui
+
+    -- Create TextBox 1 for setting the target part name
+    local textBox1 = Instance.new("TextBox")
+    textBox1.Name = "TargetPartBox"
+    textBox1.Size = UDim2.new(0, 109, 0, 50)
+    textBox1.Position = UDim2.new(0.824, 0, 0.394, 0)
+    textBox1.BorderSizePixel = 4
+    textBox1.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    textBox1.FontFace = Font.new("rbxasset://fonts/families/FredokaOne.json")
+    textBox1.TextColor3 = Color3.fromRGB(139, 139, 139)
+    textBox1.Text = "Part"
+    textBox1.TextScaled = true
+    textBox1.Parent = screenGui
+
+    -- Create TextBox 2 for setting the tween speed
+    local textBox2 = Instance.new("TextBox")
+    textBox2.Name = "TweenSpeedBox"
+    textBox2.Size = UDim2.new(0, 109, 0, 50)
+    textBox2.Position = UDim2.new(0.824, 0, 0.558, 0)
+    textBox2.BorderSizePixel = 4
+    textBox2.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    textBox2.FontFace = Font.new("rbxasset://fonts/families/FredokaOne.json")
+    textBox2.TextColor3 = Color3.fromRGB(139, 139, 139)
+    textBox2.Text = "TweenSpeed"
+    textBox2.TextScaled = true
+    textBox2.Parent = screenGui
+
+    return screenGui, textLabel, textButton, textBox1, textBox2
+end
+
+-- Function to calculate tween duration based on speed
+local function calculateTweenDuration(humRoot, targetModel)
+    local distance = (humRoot.Position - targetModel:GetPivot().Position).Magnitude
+    return distance / tweenSpeed -- Duration = Distance / Speed
+end
+
+-- Function to tween the player
+local function tweenPlayerToTarget(targetModel)
+    local humRoot = player.Character and player.Character:WaitForChild("HumanoidRootPart")
+    if not humRoot then return end
+
+    local tweenService = game:GetService("TweenService")
+    local duration = calculateTweenDuration(humRoot, targetModel)
+    local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+    local goal = {CFrame = targetModel:GetPivot()}
+
+    local tween = tweenService:Create(humRoot, tweenInfo, goal)
+    tween:Play()
+end
+
+-- Function to check for the target model and handle GUI visibility
+local currentGui
+local function checkForModel()
+    local targetModel = workspace:FindFirstChild(targetModelName)
+
+    if targetModel then
+        -- If the GUI doesn't exist, create it
+        if not currentGui then
+            currentGui, textLabel, textButton, textBox1, textBox2 = createNotificationGui()
+
+            -- Update target model name from TextBox1
+            textBox1.FocusLost:Connect(function()
+                targetModelName = textBox1.Text
+                print("Target part updated to:", targetModelName)
+            end)
+
+            -- Update tween speed from TextBox2
+            textBox2.FocusLost:Connect(function()
+                local speed = tonumber(textBox2.Text)
+                if speed and speed > 0 then
+                    tweenSpeed = speed
+                    print("Tween speed updated to:", tweenSpeed)
+                else
+                    print("Invalid tween speed input")
+                end
+            end)
+
+            -- Connect the button click to teleport the player
+            textButton.MouseButton1Click:Connect(function()
+                tweenPlayerToTarget(targetModel)
+            end)
+
+            -- Make the labels and button visible
+            textLabel.Visible = true
+            textButton.Visible = true
+        end
+    else
+        -- If the target model is gone, hide the GUI
+        if currentGui then
+            textLabel.Visible = false
+            textButton.Visible = false
+        end
+    end
+end
+
+-- Initial check
+checkForModel()
+
+-- Monitor changes in workspace
+workspace.ChildAdded:Connect(function(child)
+    if child.Name == targetModelName then
+        checkForModel()
+    end
+end)
+
+workspace.ChildRemoved:Connect(function(child)
+    if child.Name == targetModelName then
+        checkForModel()
+    end
+end)
